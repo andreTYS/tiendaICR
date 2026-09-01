@@ -1,0 +1,224 @@
+// prisma/schema.prisma
+// Full domain model for inversiones-icr web launch
+// Decision: JWT sessions → no Session table needed
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // url is configured in prisma.config.ts (Prisma v7 requirement)
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  EDITOR
+  CLIENT
+}
+
+enum HeroDisplayMode {
+  BANNERS_ONLY
+  BANNERS_OVER_ANIMATION
+  ANIMATION_ONLY
+}
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+
+model User {
+  id             String         @id @default(cuid())
+  email          String         @unique
+  passwordHash   String
+  role           Role           @default(EDITOR)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  clientAccesses ClientAccess[]
+
+  @@index([role])
+}
+
+// ─── Banners ──────────────────────────────────────────────────────────────────
+
+model Banner {
+  id         String   @id @default(cuid())
+  titleEs    String
+  titleEn    String?
+  descEs     String
+  descEn     String?
+  imageKey   String
+  ctaLabelEs String?
+  ctaLabelEn String?
+  ctaHref    String?
+  order      Int      @default(0)
+  isActive   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([isActive, order])
+}
+
+// ─── Projects ─────────────────────────────────────────────────────────────────
+
+model Category {
+  id       String    @id @default(cuid())
+  slug     String    @unique
+  nameEs   String
+  nameEn   String?
+  projects Project[]
+
+  @@index([slug])
+}
+
+model Project {
+  id             String             @id @default(cuid())
+  slug           String             @unique
+  titleEs        String
+  titleEn        String?
+  descEs         String
+  descEn         String?
+  location       String?
+  categoryId     String
+  category       Category           @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  mainImageKey   String
+  order          Int                @default(0)
+  isActive       Boolean            @default(false)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  images         ProjectImage[]
+  slugAliases    ProjectSlugAlias[]
+  victronSite    VictronSite?
+  clientAccesses ClientAccess[]
+
+  @@index([isActive, order])
+  @@index([categoryId])
+}
+
+model ProjectImage {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  imageKey  String
+  alt       String?
+  order     Int     @default(0)
+
+  @@index([projectId, order])
+}
+
+/// Old slugs that redirect to the current project slug (REQ-P5)
+model ProjectSlugAlias {
+  id        String  @id @default(cuid())
+  alias     String  @unique
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([alias])
+}
+
+// ─── Contact ──────────────────────────────────────────────────────────────────
+
+model ContactMessage {
+  id        String    @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String?
+  body      String
+  ipHash    String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([createdAt])
+}
+
+// ─── Settings (singleton, id = 1) ─────────────────────────────────────────────
+
+model Settings {
+  id               Int             @id @default(1)
+  heroDisplayMode  HeroDisplayMode @default(BANNERS_OVER_ANIMATION)
+  maxActiveBanners Int             @default(5)
+  animIntensity    Float           @default(1.6)
+  defaultLocale    String          @default("es")
+  updatedAt        DateTime        @updatedAt
+}
+
+// ─── Victron (VRM integration) ────────────────────────────────────────────────
+// Single API token (singleton row id=1) shared by all sites, stored encrypted
+// at rest with AES-256-GCM. The key is derived from AUTH_SECRET via HKDF so
+// no extra env var is required.
+
+model VictronConfig {
+  id              Int       @id @default(1)
+  // Empty string means "not configured". When set, the three columns
+  // together (ciphertext + iv + authTag) form a complete AES-256-GCM record.
+  encryptedToken  String    @default("")
+  tokenIv         String    @default("")
+  tokenTag        String    @default("")
+  // Cached identity returned by /users/me on the last successful test —
+  // surfaced in the admin UI so the user knows which account is wired.
+  victronUserId   Int?
+  victronUserName String?
+  victronEmail    String?
+  lastTestedAt    DateTime?
+  lastTestOk      Boolean   @default(false)
+  updatedAt       DateTime  @updatedAt
+}
+
+/// 1:1 link between a Project and a Victron VRM installation (idSite).
+/// Drives the live-energy widget on the public project page and the private
+/// client portal.
+model VictronSite {
+  id              String    @id @default(cuid())
+  projectId       String    @unique
+  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  idSite          Int       @unique
+  displayName     String?
+  isPublicMetrics Boolean   @default(false)
+  showPv          Boolean   @default(true)
+  showBattery     Boolean   @default(true)
+  showLoad        Boolean   @default(true)
+  showGrid        Boolean   @default(false)
+  // Server-side snapshot cache (TTL ≈ 120s) so the public widget never hits
+  // the VRM API on every render.
+  lastSyncAt      DateTime?
+  lastSnapshot    Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+/// Grants a CLIENT user read-only access to a project's energy data through
+/// /cliente/[slug]. Many-to-many between User and Project.
+model ClientAccess {
+  id        String   @id @default(cuid())
+  userId    String
+  projectId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, projectId])
+  @@index([userId])
+  @@index([projectId])
+}
+
+// ─── Site Contact (singleton, id = 1) ─────────────────────────────────────────
+// Editable contact info + social URLs that drive the public footer,
+// /contacto page and any other surface that needs to render contact details.
+
+model SiteContact {
+  id            Int      @id @default(1)
+  phone         String   @default("")
+  whatsapp      String   @default("")
+  email         String   @default("")
+  addressLine   String   @default("")
+  addressCity   String   @default("")
+  cities        String   @default("") // free-form, e.g. "Arequipa · Lima · Cusco"
+  instagramUrl  String   @default("")
+  facebookUrl   String   @default("")
+  linkedinUrl   String   @default("")
+  tiktokUrl     String   @default("")
+  youtubeUrl    String   @default("")
+  twitterUrl    String   @default("")
+  updatedAt     DateTime @updatedAt
+}

@@ -1,0 +1,202 @@
+'use client';
+import { useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import type { Locale } from '@/shared/lib/i18n/types';
+
+const ROUTES = [
+  { key: 'servicios',   es: '/servicios',   en: '/en/servicios',   labelEs: 'Servicios',   labelEn: 'Services'   },
+  { key: 'proyectos',   es: '/proyectos',   en: '/en/proyectos',   labelEs: 'Proyectos',   labelEn: 'Projects'   },
+  { key: 'calculadora', es: '/calculadora', en: '/en/calculadora', labelEs: 'Calculadora', labelEn: 'Calculator' },
+  { key: 'impacto',     es: '/impacto',     en: '/en/impacto',     labelEs: 'Impacto',     labelEn: 'Impact'     },
+  { key: 'contacto',    es: '/contacto',    en: '/en/contacto',    labelEs: 'Contacto',    labelEn: 'Contact'    },
+] as const;
+
+export default function Nav() {
+  // Next.js 16: usePathname() may briefly return null during transitions.
+  const pathname = usePathname() ?? '/';
+  const router = useRouter();
+  const locale: Locale = pathname.startsWith('/en') ? 'en' : 'es';
+
+  const [scrolled, setScrolled] = useState(false);
+  const [navTheme, setNavTheme] = useState<'dark' | 'light'>('dark');
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Scroll state + section theme detection (for nav background)
+  useEffect(() => {
+    const onScroll = () => {
+      setScrolled(window.scrollY > 60);
+      const sections = document.querySelectorAll<HTMLElement>('section, footer, header.page-header');
+      let theme: 'dark' | 'light' = 'dark';
+      sections.forEach((s) => {
+        const r = s.getBoundingClientRect();
+        if (r.top <= 80 && r.bottom > 80) {
+          theme = s.classList.contains('theme-light') ? 'light' : 'dark';
+        }
+      });
+      setNavTheme(theme);
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Close the mobile drawer whenever the user navigates.
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  // Lock background scroll while the mobile drawer is open.
+  useEffect(() => {
+    if (mobileOpen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = prev; };
+    }
+  }, [mobileOpen]);
+
+  const handleLang = (newLang: Locale) => {
+    document.cookie = `icr-lang=${newLang}; path=/; max-age=${365 * 24 * 60 * 60}; SameSite=Lax`;
+    if (newLang === 'en' && locale !== 'en') {
+      const enPath = pathname === '/' ? '/en' : `/en${pathname}`;
+      router.push(enPath);
+    } else if (newLang === 'es' && locale !== 'es') {
+      const esPath = pathname === '/en' ? '/' : pathname.replace(/^\/en/, '');
+      router.push(esPath || '/');
+    }
+    setMobileOpen(false);
+  };
+
+  const isActive = (route: (typeof ROUTES)[number]) => {
+    const path = locale === 'en' ? route.en : route.es;
+    return pathname === path || pathname.startsWith(path + '/');
+  };
+
+  const ctaHref = locale === 'en' ? '/en/contacto' : '/contacto';
+  const homeHref = locale === 'en' ? '/en' : '/';
+  const ctaLabel = locale === 'en' ? 'Free quote' : 'Cotización gratis';
+  const menuLabel = locale === 'en' ? 'Menu' : 'Menú';
+
+  return (
+    <>
+      <nav className={`nav ${navTheme === 'light' ? 'light' : ''} ${scrolled ? 'scrolled' : ''}`}>
+        {/* prefetch={false} avoids Next 16 + Turbopack empty-RSC-on-prefetch bug. */}
+        <Link
+          href={homeHref}
+          prefetch={false}
+          className="nav-logo"
+          aria-label="Inversiones ICR — Inicio"
+          onClick={() => setMobileOpen(false)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/assets/logo-dark-trim.png" alt="Inversiones ICR" className="nav-logo-img nav-logo-dark" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/assets/logo-v1-trim.png" alt="Inversiones ICR" className="nav-logo-img nav-logo-light" />
+        </Link>
+
+        <div className="nav-links">
+          {ROUTES.map((r) => (
+            <Link
+              key={r.key}
+              href={locale === 'en' ? r.en : r.es}
+              prefetch={false}
+              className={`nav-link ${isActive(r) ? 'active' : ''}`}
+            >
+              {locale === 'en' ? r.labelEn : r.labelEs}
+            </Link>
+          ))}
+        </div>
+
+        <div className="nav-right">
+          <div className="lang-toggle">
+            <button
+              className={locale === 'es' ? 'active' : ''}
+              onClick={() => handleLang('es')}
+              aria-label="Cambiar a español"
+            >
+              ES
+            </button>
+            <button
+              className={locale === 'en' ? 'active' : ''}
+              onClick={() => handleLang('en')}
+              aria-label="Switch to English"
+            >
+              EN
+            </button>
+          </div>
+          <Link href={ctaHref} prefetch={false} className="nav-cta">
+            {ctaLabel}
+          </Link>
+
+          {/* Hamburger — visible only on mobile via CSS media query */}
+          <button
+            type="button"
+            className={`nav-burger ${mobileOpen ? 'open' : ''}`}
+            aria-label={menuLabel}
+            aria-expanded={mobileOpen}
+            aria-controls="nav-drawer"
+            onClick={() => setMobileOpen((v) => !v)}
+          >
+            <span></span><span></span><span></span>
+          </button>
+        </div>
+      </nav>
+
+      {/* Mobile drawer — rendered outside <nav> so overlay covers full viewport */}
+      <div
+        id="nav-drawer"
+        className={`nav-drawer ${mobileOpen ? 'open' : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={menuLabel}
+        aria-hidden={!mobileOpen}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) setMobileOpen(false);
+        }}
+      >
+        <div className="nav-drawer-panel">
+          <ul className="nav-drawer-list">
+            {ROUTES.map((r) => (
+              <li key={r.key}>
+                <Link
+                  href={locale === 'en' ? r.en : r.es}
+                  prefetch={false}
+                  className={`nav-drawer-link ${isActive(r) ? 'active' : ''}`}
+                >
+                  {locale === 'en' ? r.labelEn : r.labelEs}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <div className="nav-drawer-foot">
+            <div className="lang-toggle">
+              <button
+                className={locale === 'es' ? 'active' : ''}
+                onClick={() => handleLang('es')}
+                aria-label="Cambiar a español"
+              >
+                ES
+              </button>
+              <button
+                className={locale === 'en' ? 'active' : ''}
+                onClick={() => handleLang('en')}
+                aria-label="Switch to English"
+              >
+                EN
+              </button>
+            </div>
+            <Link
+              href={ctaHref}
+              prefetch={false}
+              className="nav-cta"
+              onClick={() => setMobileOpen(false)}
+            >
+              {ctaLabel}
+            </Link>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}

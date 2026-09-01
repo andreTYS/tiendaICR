@@ -1,0 +1,127 @@
+'use client';
+import { usePathname } from 'next/navigation';
+import Link from 'next/link';
+import { getDictionary } from '@/shared/lib/i18n/get-dictionary';
+import type { Locale } from '@/shared/lib/i18n/types';
+import type { SiteContact } from '@/modules/site-contact/domain/site-contact';
+import SocialLinks from '@/shared/ui/molecules/social-links';
+
+interface Props {
+  contact: SiteContact | null;
+}
+
+/**
+ * Site footer — "use client" to self-derive locale from usePathname().
+ * Contact column + bottom cities row + social icons are driven by the
+ * SiteContact singleton (editable from /admin/contacto). When a field is
+ * empty we fall back to the dictionary copy so the footer is never blank.
+ */
+export default function Footer({ contact }: Props) {
+  const pathname = usePathname() ?? '/';
+  const locale: Locale = pathname.startsWith('/en') ? 'en' : 'es';
+  const { footer } = getDictionary(locale);
+
+  const contactCol = footer.cols[footer.cols.length - 1];
+  const otherCols = footer.cols.slice(0, footer.cols.length - 1);
+
+  const dynamicContactItems = buildContactItems(contact, contactCol.items);
+  const bottomCities =
+    contact?.cities?.trim() || 'AREQUIPA · LIMA · CUSCO';
+
+  return (
+    <footer className="footer theme-dark">
+      <div className="container">
+        <div className="footer-top">
+          <div className="footer-brand">
+            <Link href={locale === 'en' ? '/en' : '/'} className="nav-logo" aria-label="Inversiones ICR">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/assets/logo-dark-trim.png"
+                alt="Inversiones ICR"
+                className="nav-logo-img"
+                style={{ height: 72 }}
+              />
+            </Link>
+            <p>{footer.tagline}</p>
+            {contact && (
+              <SocialLinks contact={contact} className="footer-social" />
+            )}
+          </div>
+          {otherCols.map((col, i) => (
+            <div className="footer-col" key={i}>
+              <h4>{col.h}</h4>
+              <ul>
+                {col.items.map((item, j) => (
+                  <li key={j}>
+                    <a href="#">{item}</a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+          <div className="footer-col">
+            <h4>{contactCol.h}</h4>
+            <ul>
+              {dynamicContactItems.map((item, j) => (
+                <li key={j}>
+                  {item.href ? (
+                    <a href={item.href} target={item.external ? '_blank' : undefined} rel={item.external ? 'noopener noreferrer' : undefined}>
+                      {item.label}
+                    </a>
+                  ) : (
+                    <span>{item.label}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+        <div className="footer-bottom">
+          <div>{footer.legal}</div>
+          <div>{bottomCities}</div>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+interface ContactItem {
+  label: string;
+  href?: string;
+  external?: boolean;
+}
+
+/** Build contact column items from SiteContact, falling back to dict text. */
+function buildContactItems(
+  contact: SiteContact | null,
+  fallback: readonly string[],
+): ContactItem[] {
+  if (!contact) return fallback.map((label) => ({ label }));
+
+  const items: ContactItem[] = [];
+
+  if (contact.addressCity.trim()) {
+    items.push({ label: contact.addressCity });
+  }
+  if (contact.addressLine.trim()) {
+    items.push({ label: contact.addressLine });
+  }
+  if (contact.phone.trim()) {
+    items.push({
+      label: contact.phone,
+      href: `tel:${contact.phone.replace(/\s+/g, '')}`,
+    });
+  }
+  if (contact.whatsapp.trim()) {
+    items.push({
+      label: `WhatsApp · ${contact.whatsapp}`,
+      href: `https://wa.me/${contact.whatsapp.replace(/[^\d]/g, '')}`,
+      external: true,
+    });
+  }
+  if (contact.email.trim()) {
+    items.push({ label: contact.email, href: `mailto:${contact.email}` });
+  }
+
+  return items.length > 0 ? items : fallback.map((label) => ({ label }));
+}

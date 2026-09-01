@@ -1,0 +1,9 @@
+export type VictronError =
+  | "UNAUTHORIZED"
+  | "VALIDATION"
+  | "TOKEN_NOT_CONFIGURED"
+  | "TOKEN_INVALID"
+  | "VRM_API_ERROR"
+  | "SITE_NOT_FOUND"
+  | "ALREADY_LINKED"
+  | "PROJECT_NOT_FOUND";

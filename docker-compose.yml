@@ -1,0 +1,76 @@
+# Production compose — app + postgres + caddy (auto-TLS).
+# Usage: docker compose up -d --build
+# Caddy auto-provisions Let's Encrypt certs for ${PUBLIC_HOST} and www.${PUBLIC_HOST}.
+# Requirements:
+#   - Ports 80 and 443 reachable from the public internet.
+#   - DNS A records for ${PUBLIC_HOST} and www.${PUBLIC_HOST} pointing to the VPS IP.
+#   - .env with production values (see .env.example).
+
+name: inversiones-icr
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      AUTH_SECRET: ${AUTH_SECRET}
+      AUTH_URL: ${AUTH_URL}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+      PUBLIC_HOST: ${PUBLIC_HOST}
+      CONTACT_EMAIL_ENABLED: ${CONTACT_EMAIL_ENABLED:-false}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      # Only consumed by `npm run seed` (one-shot bootstrap). Safe to leave
+      # set after seeding — the script is idempotent.
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+      NODE_ENV: production
+    volumes:
+      - "./storage:/app/storage"
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST}
+    volumes:
+      - "./docker/Caddyfile:/etc/caddy/Caddyfile:ro"
+      - "caddy_data:/data"
+      - "caddy_config:/config"
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
