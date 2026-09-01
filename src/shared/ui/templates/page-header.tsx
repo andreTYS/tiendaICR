@@ -1,0 +1,66 @@
+// RSC — PageHeader for internal pages (breadcrumb + h1 + lead)
+// 1:1 port from shell.jsx#PageHeader
+
+import type { Locale } from '@/shared/lib/i18n/types';
+
+interface Props {
+  eyebrow: string;
+  /** May contain HTML (e.g. <span class="hl">…</span>) */
+  title: string;
+  lead?: string;
+  locale: Locale;
+  /** Route key — used for breadcrumb label and index number */
+  route: 'servicios' | 'proyectos' | 'calculadora' | 'impacto' | 'contacto';
+}
+
+const ROUTE_LABELS: Record<string, Record<Locale, string>> = {
+  servicios:   { es: 'Servicios',   en: 'Services'   },
+  proyectos:   { es: 'Proyectos',   en: 'Projects'   },
+  calculadora: { es: 'Calculadora', en: 'Calculator' },
+  impacto:     { es: 'Impacto',     en: 'Impact'     },
+  contacto:    { es: 'Contacto',    en: 'Contact'    },
+};
+
+const ROUTE_INDEX: Record<string, number> = {
+  servicios: 1, proyectos: 2, calculadora: 3, impacto: 4, contacto: 5,
+};
+
+export default function PageHeader({ eyebrow, title, lead, locale, route }: Props) {
+  const label = ROUTE_LABELS[route]?.[locale] ?? route;
+  const num = String(ROUTE_INDEX[route] ?? 0).padStart(2, '0');
+  const homeHref = locale === 'en' ? '/en' : '/';
+
+  return (
+    <header className="page-header theme-dark">
+      <div className="page-header-bg">
+        <div className="page-header-grid" />
+        <div className="page-header-glow" />
+      </div>
+      <div className="container page-header-inner">
+        <div className="page-header-crumbs reveal">
+          <a href={homeHref}>ICR</a>
+          <span className="sep">/</span>
+          <span className="current">{label}</span>
+          <span className="index">{num}</span>
+        </div>
+        <div className="eyebrow reveal" data-delay="1" style={{ marginTop: 28 }}>
+          {eyebrow}
+        </div>
+        <h1
+          className="display reveal"
+          data-delay="2"
+          style={{ marginTop: 20, fontSize: 'clamp(44px, 7vw, 108px)' }}
+          dangerouslySetInnerHTML={{ __html: title }}
+        />
+        {lead && (
+          <p className="lead reveal" data-delay="3" style={{ marginTop: 28, maxWidth: '62ch' }}>
+            {lead}
+          </p>
+        )}
+      </div>
+      <div className="page-header-nav-hint">
+        <span className="mono">↓ SCROLL</span>
+      </div>
+    </header>
+  );
+}

@@ -1,0 +1,47 @@
+# Caddy config for production.
+# - Auto-TLS via Let's Encrypt (on first hit to ports 80/443 with valid DNS).
+# - Reverse proxy to the Next.js app on port 3000.
+# - Long-lived caching for static assets and immutable media.
+# - Security headers on every response.
+#
+# Certs and ACME state persist in the `caddy_data` volume (see compose).
+
+{$PUBLIC_HOST}, www.{$PUBLIC_HOST} {
+	# Auto HTTP→HTTPS redirect happens automatically when TLS is provisioned.
+
+	encode zstd gzip
+
+	# Security headers
+	header {
+		X-Frame-Options "SAMEORIGIN"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self';"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		# Caddy adds Server: Caddy — hide it.
+		-Server
+	}
+
+	# Next.js immutable static assets
+	@static path /_next/static/*
+	header @static Cache-Control "public, max-age=31536000, immutable"
+
+	# Content-addressed uploaded media
+	@media path /api/media/*
+	header @media Cache-Control "public, max-age=31536000, immutable"
+
+	# Health check — never cache
+	@health path /api/health
+	header @health Cache-Control "no-store"
+
+	# Upload size ceiling aligned with next.config.ts (10MB server actions)
+	request_body {
+		max_size 12MB
+	}
+
+	# Caddy sets X-Forwarded-For / X-Forwarded-Proto automatically.
+	reverse_proxy app:3000 {
+		header_up X-Real-IP {remote_host}
+	}
+}

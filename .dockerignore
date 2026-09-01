@@ -1,0 +1,52 @@
+# Keep the build context small and prevent host secrets from leaking into the image.
+# The Dockerfile's `COPY . .` happens in the builder stage only — anything ignored
+# here is excluded from that copy. The runner stage copies curated paths from builder.
+
+# ── Local state that should never enter the image ──────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── VCS ────────────────────────────────────────────────────────────────────
+.git
+.gitignore
+.gitattributes
+
+# ── Node / build outputs ───────────────────────────────────────────────────
+node_modules
+.next
+out
+*.tsbuildinfo
+
+# ── Tests / coverage / e2e ─────────────────────────────────────────────────
+coverage
+e2e
+playwright-report
+playwright.config.ts
+test-results
+vitest.config.ts
+
+# ── Dev-only tooling and configs not needed to `next build` ────────────────
+eslint.config.mjs
+
+# ── Editor / OS cruft ──────────────────────────────────────────────────────
+.vscode
+.idea
+.DS_Store
+*.swp
+*.swo
+
+# ── Runtime storage (mounted as volume at runtime, not baked into image) ───
+storage
+
+# ── Docs and planning artifacts ────────────────────────────────────────────
+README.md
+AGENTS.md
+CLAUDE.md
+docs
+
+# ── Agent / skill caches ───────────────────────────────────────────────────
+.claude
+.atl
+.agent
+.cursor

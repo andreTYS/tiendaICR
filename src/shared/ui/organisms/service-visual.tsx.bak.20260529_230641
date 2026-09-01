@@ -1,0 +1,276 @@
+// RSC — Service illustration SVGs
+// 1:1 port from visuals.jsx#ServiceVisual
+
+interface Props {
+  index: number;
+}
+
+/**
+ * Round to 3 decimals. Required for any SVG numeric attribute that comes
+ * from a float computation (opacity, transform values, etc.): React 19
+ * compares server-rendered and client-rendered values with full precision,
+ * and V8 on Node vs. the browser can disagree on the last digit of a
+ * Math.sin() / arithmetic result, which triggers a hydration mismatch
+ * that discards the whole subtree and blanks the page.
+ */
+const r3 = (n: number): number => Math.round(n * 1000) / 1000;
+
+export default function ServiceVisual({ index }: Props) {
+  const visuals = [
+    // 01 — Instalación: panel grid
+    <svg key="0" viewBox="0 0 600 600" aria-hidden="true">
+      <defs>
+        <linearGradient id="sv0-bg" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0" stopColor="#0E1628" />
+          <stop offset="1" stopColor="#070807" />
+        </linearGradient>
+        <linearGradient id="sv0-panel" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0" stopColor="#3A4D70" />
+          <stop offset="1" stopColor="#1A2540" />
+        </linearGradient>
+      </defs>
+      <rect width="600" height="600" fill="url(#sv0-bg)" />
+      {[0, 1, 2, 3].map((r) =>
+        [0, 1, 2, 3].map((c) => (
+          <g key={`${r}-${c}`} transform={`translate(${80 + c * 110}, ${80 + r * 110})`}>
+            <rect width="90" height="90" rx="3" fill="url(#sv0-panel)" stroke="#4A5D82" strokeWidth="1" />
+            <line x1="45" y1="5" x2="45" y2="85" stroke="#1A2540" strokeWidth="0.8" />
+            <line x1="5" y1="45" x2="85" y2="45" stroke="#1A2540" strokeWidth="0.8" />
+            <rect width="90" height="45" rx="3" fill="#FFC107" opacity={r3(0.05 + (r + c) * 0.03)} />
+          </g>
+        ))
+      )}
+      <circle cx="85" cy="85" r="3" fill="#FFC107" />
+      <circle cx="515" cy="515" r="3" fill="#FFC107" />
+      <text x="40" y="560" fontFamily="ui-monospace, monospace" fontSize="11" fill="#FFC107" letterSpacing="2">
+        ARRAY.01 — 48 PANELS
+      </text>
+    </svg>,
+
+    // 02 — Mantenimiento: planned manual schedule
+    <svg key="1" viewBox="0 0 600 600" aria-hidden="true">
+      <defs>
+        <linearGradient id="sv1-bg" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0" stopColor="#0E1628" />
+          <stop offset="1" stopColor="#070807" />
+        </linearGradient>
+      </defs>
+      <rect width="600" height="600" fill="url(#sv1-bg)" />
+
+      <text x="40" y="52" fontFamily="ui-monospace, monospace" fontSize="11" fill="#6A7A6F" letterSpacing="2">
+        MAINT.SCHEDULE
+      </text>
+      <text x="40" y="92" fontFamily="Space Grotesk, sans-serif" fontSize="26" fontWeight="600" fill="#FFC107">
+        Plan anual · Manual
+      </text>
+
+      {Array.from({ length: 13 }).map((_, i) => {
+        const x = r3(160 + (i * 400) / 12);
+        return (
+          <line key={`mv${i}`} x1={x} y1={135} x2={x} y2={335} stroke="#FFC107" strokeWidth="0.4" opacity="0.1" />
+        );
+      })}
+
+      {[
+        { label: 'INSPECCIÓN', freq: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] },
+        { label: 'LAVADO', freq: [1, 4, 7, 10] },
+        { label: 'STRINGS', freq: [2, 8] },
+        { label: 'REPORTE', freq: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] },
+      ].map((task, i) => {
+        const y = 155 + i * 50;
+        return (
+          <g key={task.label}>
+            <text x="150" y={y + 4} fontFamily="ui-monospace, monospace" fontSize="10" fill="#9BAA9F" textAnchor="end" letterSpacing="1.5">
+              {task.label}
+            </text>
+            <line x1={165} y1={y} x2={555} y2={y} stroke="#262B28" strokeWidth="1" />
+            {task.freq.map((m) => {
+              const cx = r3(160 + (400 / 12) * (m + 0.5));
+              return (
+                <g key={`${task.label}-${m}`}>
+                  <circle cx={cx} cy={y} r="5" fill="#0E1628" stroke="#FFC107" strokeWidth="1.5" />
+                  <circle cx={cx} cy={y} r="2" fill="#FFC107" />
+                </g>
+              );
+            })}
+          </g>
+        );
+      })}
+
+      {['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'].map((m, i) => {
+        const x = r3(160 + (400 / 12) * (i + 0.5));
+        return (
+          <text key={`lbl-${i}`} x={x} y={360} fontFamily="ui-monospace, monospace" fontSize="10" fill="#6A7A6F" textAnchor="middle" letterSpacing="1">
+            {m}
+          </text>
+        );
+      })}
+
+      <g transform="translate(40, 400)">
+        <rect width="520" height="60" rx="8" fill="#151916" stroke="#262B28" />
+        <text x="20" y="24" fontFamily="ui-monospace, monospace" fontSize="9" fill="#6A7A6F" letterSpacing="1.5">
+          VISITAS / AÑO
+        </text>
+        <text x="20" y="46" fontFamily="Space Grotesk, sans-serif" fontSize="16" fontWeight="600" fill="#F5F7F5">
+          12 inspecciones · 4 lavados · 2 diagnósticos · 12 reportes
+        </text>
+      </g>
+
+      <text x="40" y="560" fontFamily="ui-monospace, monospace" fontSize="11" fill="#FFC107" letterSpacing="2">
+        MAINT.PLAN — MANUAL
+      </text>
+    </svg>,
+
+    // 03 — Monitoreo: live dashboard
+    <svg key="2" viewBox="0 0 600 600" aria-hidden="true">
+      <rect width="600" height="600" fill="#0A0B0A" />
+      {Array.from({ length: 30 }).map((_, i) => (
+        <line key={`v${i}`} x1={i * 20} y1="0" x2={i * 20} y2="600" stroke="#FFC107" strokeWidth="0.3" opacity="0.06" />
+      ))}
+      {Array.from({ length: 30 }).map((_, i) => (
+        <line key={`h${i}`} x1="0" y1={i * 20} x2="600" y2={i * 20} stroke="#FFC107" strokeWidth="0.3" opacity="0.06" />
+      ))}
+      <path
+        d="M60,400 Q120,380 160,350 T260,280 T360,200 T460,150 T540,120"
+        fill="none"
+        stroke="#FFC107"
+        strokeWidth="3"
+      />
+      <path
+        d="M60,400 Q120,380 160,350 T260,280 T360,200 T460,150 T540,120 L540,480 L60,480 Z"
+        fill="#FFC107"
+        opacity="0.1"
+      />
+      {[
+        { x: 60, y: 400 },
+        { x: 160, y: 350 },
+        { x: 260, y: 280 },
+        { x: 360, y: 200 },
+        { x: 460, y: 150 },
+        { x: 540, y: 120 },
+      ].map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r="4" fill="#0A0B0A" stroke="#FFC107" strokeWidth="2" />
+      ))}
+      <g transform="translate(60, 60)">
+        <rect width="150" height="70" rx="8" fill="#151916" stroke="#262B28" />
+        <text x="12" y="24" fontFamily="ui-monospace, monospace" fontSize="9" fill="#6A7A6F" letterSpacing="1.5">
+          OUTPUT NOW
+        </text>
+        <text x="12" y="52" fontFamily="Space Grotesk, sans-serif" fontSize="22" fontWeight="600" fill="#FFC107">
+          4.82 kW
+        </text>
+      </g>
+      <g transform="translate(390, 60)">
+        <rect width="150" height="70" rx="8" fill="#151916" stroke="#262B28" />
+        <text x="12" y="24" fontFamily="ui-monospace, monospace" fontSize="9" fill="#6A7A6F" letterSpacing="1.5">
+          UPTIME
+        </text>
+        <text x="12" y="52" fontFamily="Space Grotesk, sans-serif" fontSize="22" fontWeight="600" fill="#F5F7F5">
+          99.4%
+        </text>
+      </g>
+      <circle cx="540" cy="120" r="8" fill="none" stroke="#FFC107" strokeWidth="1">
+        <animate attributeName="r" values="4;20;4" dur="2s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="1;0;1" dur="2s" repeatCount="indefinite" />
+      </circle>
+      <text x="40" y="560" fontFamily="ui-monospace, monospace" fontSize="11" fill="#FFC107" letterSpacing="2">
+        LIVE.FEED — 24/7
+      </text>
+    </svg>,
+
+    // 04 — Automatización: smart hub circuit
+    <svg key="3" viewBox="0 0 600 600" aria-hidden="true">
+      <rect width="600" height="600" fill="#070807" />
+      <defs>
+        <linearGradient id="sv3-line" x1="0" x2="1">
+          <stop offset="0" stopColor="#FFC107" stopOpacity="0" />
+          <stop offset="0.5" stopColor="#FFC107" />
+          <stop offset="1" stopColor="#FFC107" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <circle cx="300" cy="300" r="60" fill="#0E110F" stroke="#FFC107" strokeWidth="2" />
+      <circle cx="300" cy="300" r="90" fill="none" stroke="#FFC107" strokeWidth="1" opacity="0.3" strokeDasharray="2 6" />
+      <circle cx="300" cy="300" r="140" fill="none" stroke="#FFC107" strokeWidth="1" opacity="0.2" />
+      <text x="300" y="295" fontFamily="Space Grotesk, sans-serif" fontSize="13" fontWeight="600" fill="#FFC107" textAnchor="middle">
+        ICER
+      </text>
+      <text x="300" y="312" fontFamily="ui-monospace, monospace" fontSize="9" fill="#6A7A6F" textAnchor="middle">
+        SMART HUB
+      </text>
+      {[
+        { a: 0, label: 'PV' },
+        { a: 60, label: 'BESS' },
+        { a: 120, label: 'EV' },
+        { a: 180, label: 'GRID' },
+        { a: 240, label: 'HVAC' },
+        { a: 300, label: 'LOAD' },
+      ].map(({ a, label }, i) => {
+        const rad = ((a - 90) * Math.PI) / 180;
+        const x = 300 + Math.cos(rad) * 220;
+        const y = 300 + Math.sin(rad) * 220;
+        return (
+          <g key={i}>
+            <line x1="300" y1="300" x2={x} y2={y} stroke="url(#sv3-line)" strokeWidth="1.5" />
+            <circle cx={x} cy={y} r="26" fill="#0E110F" stroke="#262B28" strokeWidth="1" />
+            <circle cx={x} cy={y} r="4" fill="#FFC107">
+              <animate attributeName="opacity" values="0.3;1;0.3" dur={`${2 + i * 0.3}s`} repeatCount="indefinite" />
+            </circle>
+            <text x={x} y={y + 46} fontFamily="ui-monospace, monospace" fontSize="9" fill="#9BAA9F" textAnchor="middle" letterSpacing="1">
+              {label}
+            </text>
+          </g>
+        );
+      })}
+      <text x="40" y="560" fontFamily="ui-monospace, monospace" fontSize="11" fill="#FFC107" letterSpacing="2">
+        SMART.GRID — EMS
+      </text>
+    </svg>,
+
+    // 05 — Consultoría: blueprint
+    <svg key="4" viewBox="0 0 600 600" aria-hidden="true">
+      <rect width="600" height="600" fill="#0E1628" />
+      {Array.from({ length: 30 }).map((_, i) => (
+        <line key={`v${i}`} x1={i * 20} y1="0" x2={i * 20} y2="600" stroke="#3A4D70" strokeWidth="0.3" opacity="0.4" />
+      ))}
+      {Array.from({ length: 30 }).map((_, i) => (
+        <line key={`h${i}`} x1="0" y1={i * 20} x2="600" y2={i * 20} stroke="#3A4D70" strokeWidth="0.3" opacity="0.4" />
+      ))}
+      <rect x="100" y="200" width="400" height="260" fill="none" stroke="#FFC107" strokeWidth="2" />
+      <polygon points="100,200 300,100 500,200" fill="none" stroke="#FFC107" strokeWidth="2" />
+      <polygon points="160,188 300,120 440,188" fill="#FFC107" opacity="0.15" stroke="#FFC107" strokeWidth="1" />
+      {[0, 1, 2, 3, 4].map((i) => (
+        <line
+          key={i}
+          x1={160 + i * 56}
+          y1={188 - i * 2}
+          x2={228 + i * 56}
+          y2={154 - i * 2}
+          stroke="#FFC107"
+          strokeWidth="0.8"
+          opacity="0.5"
+        />
+      ))}
+      <line x1="100" y1="490" x2="500" y2="490" stroke="#FFC107" strokeWidth="0.8" />
+      <line x1="100" y1="485" x2="100" y2="495" stroke="#FFC107" strokeWidth="0.8" />
+      <line x1="500" y1="485" x2="500" y2="495" stroke="#FFC107" strokeWidth="0.8" />
+      <text x="300" y="508" fontFamily="ui-monospace, monospace" fontSize="10" fill="#FFC107" textAnchor="middle">
+        18.60 m
+      </text>
+      <g transform="translate(500, 130)">
+        <line x1="-60" y1="20" x2="0" y2="20" stroke="#FFC107" strokeWidth="0.8" />
+        <circle cx="-60" cy="20" r="3" fill="#FFC107" />
+        <text x="6" y="18" fontFamily="ui-monospace, monospace" fontSize="9" fill="#FFC107">
+          32 × 580W
+        </text>
+        <text x="6" y="30" fontFamily="ui-monospace, monospace" fontSize="9" fill="#FFC107" opacity="0.6">
+          TILT 15°
+        </text>
+      </g>
+      <text x="40" y="560" fontFamily="ui-monospace, monospace" fontSize="11" fill="#FFC107" letterSpacing="2">
+        BLUEPRINT — ENG.REV.04
+      </text>
+    </svg>,
+  ];
+
+  return visuals[index % visuals.length];
+}

@@ -1,0 +1,24 @@
+# Normaliza los finales de línea a LF en el repositorio.
+# Sin esto, Git para Windows (core.autocrlf=true por defecto) convierte a CRLF
+# al clonar. Para los ficheros que consume Linux dentro de la imagen Docker eso
+# es fatal: un entrypoint.sh con CRLF falla con "exec format error" porque el
+# shebang pasa a ser "#!/bin/sh\r", que no existe.
+* text=auto eol=lf
+
+# Ficheros que SIEMPRE deben llegar en LF, se editen donde se editen.
+*.sh            text eol=lf
+Dockerfile      text eol=lf
+docker/Caddyfile text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+
+# Binarios: que Git no intente normalizar nada.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.avif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.dump binary
