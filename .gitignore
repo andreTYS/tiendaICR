@@ -42,6 +42,8 @@ yarn-error.log*
 # porque son la única copia que queda de las imágenes reales de la tienda.
 /storage/*
 !/storage/uploads/
+# …salvo los placeholders que regenera `npm run seed` en cada entorno.
+/storage/uploads/sample/
 
 # backups de base de datos — contienen hashes de contraseña y datos personales.
 # Ojo: no uses `*.sql` aquí, excluiría las migraciones de Prisma.
