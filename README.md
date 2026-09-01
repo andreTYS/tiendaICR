@@ -54,6 +54,87 @@ npm run dev
 
 ---
 
+## Puesta en marcha en Windows sin Docker
+
+Docker solo aporta el Postgres: la aplicación corre en el host con `npm run dev`.
+Si no tienes Docker, basta con conseguir un PostgreSQL por otra vía. Las
+migraciones son DDL estándar — sin extensiones ni operaciones que exijan
+superusuario — así que sirve cualquier PostgreSQL reciente.
+
+### PowerShell bloquea npm
+
+Windows trae la política de ejecución en `Restricted`, y `npm` es un script
+`.ps1`. El síntoma es `npm : No se puede cargar el archivo npm.ps1 porque la
+ejecución de scripts está deshabilitada`, aunque Node esté bien instalado.
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
+
+No necesita administrador. Como alternativa sin tocar la configuración, usa los
+shims `npm.cmd` / `npx.cmd`, o trabaja desde `cmd`, que no pasa por esa política.
+
+### PostgreSQL nativo
+
+Instala PostgreSQL 16 desde <https://www.postgresql.org/download/windows/> — la
+misma versión mayor que usa producción (`postgres:16-alpine`).
+
+Durante el asistente, **elige el puerto 5433 en vez del 5432**. Dos motivos:
+
+- `.env.local.example` ya apunta a 5433, así que no hay que editar nada.
+- Evita el choque con otros Postgres de la máquina. Odoo para Windows, por
+  ejemplo, instala su propio servidor (`PostgreSQL_For_Odoo`) en el 5432.
+
+Después, en **SQL Shell (psql)**, indicando 5433 cuando pregunte el puerto:
+
+```sql
+CREATE USER icr WITH PASSWORD 'icr' CREATEDB;
+CREATE DATABASE icr OWNER icr;
+```
+
+El permiso `CREATEDB` no es opcional si vas a usar `npm run db:migrate`:
+`prisma migrate dev` crea una *shadow database* temporal para comparar el
+esquema. Con Docker no se nota, porque allí el usuario es superusuario del
+contenedor.
+
+Comprueba puerto, usuario, contraseña y base de una sola vez:
+
+```
+set PGPASSWORD=icr
+psql -h localhost -p 5433 -U icr -d icr -c "SELECT version();"
+```
+
+Si `psql` no está en el PATH, está en `C:\Program Files\PostgreSQL\16\bin\`.
+Añádelo desde *Variables de entorno*; no uses `setx PATH`, que trunca el valor a
+1024 caracteres.
+
+### Postgres gestionado, sin instalar nada
+
+Una base gratuita en Neon o Supabase también vale. Pon su cadena de conexión en
+`.env.local` **con `?sslmode=require`**: el cliente se construye con
+`new PrismaPg(url)` sin configuración de TLS aparte, así que el modo SSL tiene
+que viajar en la propia URL.
+
+### Aplicar migraciones sin shadow database
+
+Para levantar el proyecto basta con aplicar las migraciones ya existentes:
+
+```
+npm run db:deploy
+```
+
+`db:deploy` (`prisma migrate deploy`) no crea base temporal, así que funciona
+aunque el usuario no tenga `CREATEDB`. Reserva `db:migrate` para cuando estés
+creando migraciones nuevas.
+
+### Qué se puede adelantar sin base de datos
+
+`npm install`, `npx prisma generate`, `npm test` y `npm run build` funcionan sin
+Postgres levantado: las pruebas usan los dobles de `__fakes__`, y `env.ts` valida
+las variables de forma perezosa para no exigir secretos en tiempo de compilación.
+
+---
+
 ## Environment variables
 
 | Variable | Required | Description | Default |
